@@ -1,0 +1,68 @@
+---
+description: 该文档详细阐述了项目的顶层目录结构, 其作用是为项目开发、部署及维护提供清晰的结构指引和模块划分参考。
+globs: 
+alwaysApply: false
+---
+# 项目目录结构分析
+
+## 1. 顶层目录结构
+
+### `api/` - API 定义目录
+
+### `cmd/` - 服务入口目录
+
+### `internal/` - 内部业务代码
+遵循 DDD (领域驱动设计) 分层架构：
+- `application/` - 应用层
+  - `command/` - 命令处理
+  - `query/` - 查询处理
+  - `service/` - 应用服务
+- `domain/` - 领域层
+  - `model/` - 领域模型
+  - `service/` - 领域服务
+- `infrastructure/` - 基础设施层
+  - `client/` - 外部客户端
+  - `converter/` - 数据转换器
+  - `repository/` - 数据仓储
+  - `publisher/` - 消息发布
+- `presentation/` - 表现层
+  - `assembler/` - 数据组装
+  - `controller/` - 控制器
+  - `provider/` - 服务提供者
+  - `subscriber/` - 消息订阅者
+
+### `pkg/` - 公共代码包
+包含各种通用工具和基础设施：
+- 数据库相关：`mysql/`, `redis/`, `clickhouse/`
+- 消息队列：`amqp/`, `kafka/`
+- 中间件：`middleware/`
+- 工具类：`tools/`, `filex/`, `stringx/`
+- SDK：`sdk/`
+- 监控和追踪：`metricx/`, `sentry/`
+
+### `deployments/` - 部署配置
+按环境划分部署配置：
+- `pre/` - 预发布环境
+- `prod/` - 生产环境
+- `test/` - 测试环境
+每个环境下可能包含：
+- `rpc/` - RPC 服务配置
+- `web/` - Web 服务配置
+- `cron/` - 定时任务配置
+- `pubsub/` - 消息订阅配置
+
+### `docs/` - 项目文档
+
+### `scripts/` - 脚本文件
+- `busness/` - 业务相关脚本
+- `db/` - 数据库脚本
+- `shell/` - Shell 脚本
+
+### `third_party/` - 第三方依赖
+- `google/` - Google 相关依赖
+- `openapiv3/` - OpenAPI 规范
+
+## 2. 主要业务模块
+
+项目包含多个业务模块，每个模块都遵循相同的 DDD 架构：
+...

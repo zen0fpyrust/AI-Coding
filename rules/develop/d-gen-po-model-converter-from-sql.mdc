@@ -1,0 +1,150 @@
+---
+description: 根据sql生成model和po文件，以及converter转化器
+globs: 
+alwaysApply: false
+---
+# SQL to Go Code Generator Rules
+
+## 概述
+根据 SQL CREATE TABLE 语句生成三个 Go 文件：Model、PO（持久化对象）和 Converter。
+
+## 前置检查
+1. 检查项目的 go.mod 文件以获取正确的模块名
+2. 确认目标目录结构是否存在
+
+## 文件生成规则
+
+### 1. Model 文件
+**位置**: `domain/model/{表名}.go`
+
+**要求**:
+- 结构体名称采用驼峰命名，如 `UserAuth`
+- 字段名采用驼峰命名
+- 必须包含 json 标签
+- 所有数据库字段都要映射，包括 created_time 和 updated_time
+- 时间类型字段必须导入 "time" 包
+
+**示例**:
+```go
+package model
+
+import "time"
+
+type Users struct {
+    ID          int64     `json:"id"`
+    Name        string    `json:"name"`
+    CreatedTime time.Time `json:"created_time"`
+    UpdatedTime time.Time `json:"updated_time"`
+}
+```
+
+### 2. PO 文件
+**位置**: `infrastructure/po/{表名}.go` 或 `repository/adapter/po/{表名}.go`
+
+**要求**:
+- 结构体名称与 Model 保持一致
+- 必须包含 GORM 标签和 json 标签
+- 表名方法必须实现
+- 所有数据库字段都要映射，包括 created_time 和 updated_time
+- 时间类型字段必须导入 "time" 包
+
+**示例**:
+```go
+package po
+
+import "time"
+
+type Users struct {
+    ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+    Name        string    `gorm:"column:name;not null" json:"name"`
+    CreatedTime time.Time `gorm:"column:created_time;not null;default:CURRENT_TIMESTAMP" json:"created_time"`
+    UpdatedTime time.Time `gorm:"column:updated_time;not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" json:"updated_time"`
+}
+
+func (u *Users) TableName() string {
+    return "users"
+}
+```
+
+### 3. Converter 文件
+**位置**: `infrastructure/converter/{表名}_converters.go`
+
+**要求**:
+- 必须使用正确的模块导入路径（从 go.mod 获取）
+- 必须实现四个转换函数：
+  1. To{表名}PO: Model -> PO
+  2. To{表名}Model: PO -> Model
+  3. To{表名}POList: []Model -> []PO
+  4. To{表名}ModelList: []PO -> []Model
+- 所有函数都必须包含 nil 检查
+- 必须转换所有字段，包括时间字段
+
+**示例**:
+```go
+package converter
+
+import (
+    "nebula/domain/model"
+    "nebula/infrastructure/po"
+)
+
+func ToUsersPO(m *model.Users) *po.Users {
+    if m == nil {
+        return nil
+    }
+    return &po.Users{
+        ID:          m.ID,
+        Name:        m.Name,
+        CreatedTime: m.CreatedTime,
+        UpdatedTime: m.UpdatedTime,
+    }
+}
+
+// 其他转换函数...
+```
+
+## 数据类型映射规则
+
+| SQL 类型    | Go 类型    | 说明                |
+|------------|-----------|-------------------|
+| BIGINT     | int64     | 包括 UNSIGNED      |
+| INT        | int       | 包括 UNSIGNED      |
+| VARCHAR    | string    | 所有字符串类型        |
+| TEXT       | string    | 所有文本类型         |
+| TIMESTAMP  | time.Time | 时间戳类型          |
+| DATETIME   | time.Time | 日期时间类型        |
+| DECIMAL    | float64   | 浮点数类型          |
+| BOOL       | bool      | 布尔类型           |
+
+## 特殊字段处理
+
+### 时间字段
+- created_time 和 updated_time 必须同时出现在 Model 和 PO 中
+- 类型必须是 time.Time
+- PO 中必须包含正确的 GORM 默认值标签
+
+### 主键字段
+- 通常命名为 id
+- PO 中必须包含 primaryKey 标签
+- 如果是自增主键，必须包含 autoIncrement 标签
+
+### 必填字段
+- 对应的数据库字段有 NOT NULL 约束
+- PO 中必须包含 not null 标签
+
+## 命名规范
+1. 文件名：全小写，下划线分隔
+2. 结构体名：驼峰命名，首字母大写
+3. 字段名：驼峰命名，首字母大写
+4. 标签：全小写，下划线分隔
+
+## 导入路径规范
+- 使用项目 go.mod 中定义的模块名作为根路径
+- 不要使用相对导入路径
+- 导入路径示例：
+  ```go
+  import (
+      "{模块名}/domain/model"
+      "{模块名}/infrastructure/po"
+  )
+  ```
